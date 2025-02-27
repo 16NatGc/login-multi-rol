@@ -7,7 +7,7 @@ const RECAPTCHA_SECRET_KEY = '6LeKnNwqAAAAABQIgzfvCZI37Ikyxvdi5dMgQqnz';
 const loginAttempts = {}; // Almacena los intentos de inicio de sesión
 
 // Registrar un nuevo usuario
-exports.registerUser  = (req, res) => {
+exports.registerUser = (req, res) => {
     const { nombre, telefono, email, password, id_rol } = req.body;
 
     // Verificar si el rol existe
@@ -36,8 +36,8 @@ exports.registerUser  = (req, res) => {
             const hashedPassword = bcrypt.hashSync(password, 10);
 
             // Insertar el nuevo usuario
-            connection.query('INSERT INTO tb_usuarios (nombre, telefono, email, password, id_rol) VALUES (?, ?, ?, ?, ?)', 
-                [nombre, telefono, email, hashedPassword, id_rol], 
+            connection.query('INSERT INTO tb_usuarios (nombre, telefono, email, password, id_rol) VALUES (?, ?, ?, ?, ?)',
+                [nombre, telefono, email, hashedPassword, id_rol],
                 (err, results) => {
                     if (err) {
                         console.error('Error al registrar el usuario:', err);
@@ -51,7 +51,7 @@ exports.registerUser  = (req, res) => {
 };
 
 // Iniciar sesión
-exports.loginUser  = async (req, res) => {
+exports.loginUser = async (req, res) => {
     const { email, password, captchaResponse } = req.body;
 
     // Verificar si el usuario está bloqueado
@@ -94,7 +94,8 @@ exports.loginUser  = async (req, res) => {
 
         const user = results[0];
         if (bcrypt.compareSync(password, user.password)) {
-            const token = jwt.sign({ id: user.id_usuario, role: user.id_rol }, 'tu_secreto', { expiresIn: '1h' });
+            // Incluir el nombre del usuario en el token
+            const token = jwt.sign({ id: user.id_usuario, role: user.id_rol, nombre: user.nombre }, 'tu_secreto', { expiresIn: '1h' });
             res.json({ token, role: user.id_rol });
         } else {
             // Incrementar intentos fallidos
@@ -116,5 +117,32 @@ exports.getAllUsers = (req, res) => {
             return res.status(500).json({ message: 'Error al obtener los usuarios' });
         }
         res.json(results); // Enviar la lista de usuarios en formato JSON
+    });
+};
+
+// Obtener usuarios por rol
+exports.getUsersByRole = (req, res) => {
+    const { rol } = req.params;
+    connection.query('SELECT * FROM tb_usuarios WHERE id_rol = ?', [rol], (err, results) => {
+        if (err) {
+            console.error('Error al obtener los usuarios por rol:', err);
+            return res.status(500).json({ message: 'Error al obtener los usuarios por rol' });
+        }
+        res.json(results);
+    });
+};
+
+// Obtener un usuario por ID
+exports.getUserById = (req, res) => {
+    const { id } = req.params;
+    connection.query('SELECT * FROM tb_usuarios WHERE id_usuario = ?', [id], (err, results) => {
+        if (err) {
+            console.error('Error al obtener el usuario por ID:', err);
+            return res.status(500).json({ message: 'Error al obtener el usuario por ID' });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+        res.json(results[0]);
     });
 };
